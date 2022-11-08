@@ -1,0 +1,79 @@
+{
+    "common": {
+        "name": "belgium-smart-meter-p1",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung",
+                "ru": "Начальная версия",
+                "pt": "lançamento inicial",
+                "nl": "Eerste uitgave",
+                "fr": "Première version",
+                "it": "Versione iniziale",
+                "es": "Versión inicial",
+                "pl": "Pierwsze wydanie",
+                "zh-cn": "首次出版"
+            }
+        },
+        "title": "Belgian smart meter P1 port",
+        "titleLang": {
+            "en": "Belgian smart meter P1 port",
+            "de": "Belgischer Smart-Meter-Port P1",
+            "ru": "Бельгийский смарт-счетчик P1 порт",
+            "pt": "Porta P1 do medidor inteligente belga",
+            "nl": "Belgische slimme meter P1 poort",
+            "fr": "Port P1 du compteur intelligent belge",
+            "it": "Porta P1 del contatore intelligente belga",
+            "es": "Puerto P1 del medidor inteligente belga",
+            "pl": "Belgijski inteligentny licznik portu P1",
+            "zh-cn": "比利时智​​能电表P1口"
+        },
+        "desc": {
+            "en": "Slow metering data (P1 port) of a smart meter in Belgium",
+            "de": "Slow-Metering-Daten (Port P1) eines Smart Meters in Belgien",
+            "ru": "Данные медленных измерений (порт P1) интеллектуального счетчика в Бельгии",
+            "pt": "Dados de medição lenta (porta P1) de um medidor inteligente na Bélgica",
+            "nl": "Langzame meetgegevens (P1-poort) van een slimme meter in België",
+            "fr": "Données de comptage lent (port P1) d'un compteur intelligent en Belgique",
+            "it": "Dati di misurazione lenta (porta P1) di un contatore intelligente in Belgio",
+            "es": "Datos de medición lentos (puerto P1) de un medidor inteligente en Bélgica",
+            "pl": "Wolne dane pomiarowe (port P1) inteligentnego licznika w Belgii",
+            "zh-cn": "比利时某智能电表慢速计量数据（P1口）"
+        },
+        "authors": ["Stefaan Vandevelde <stefaan@vandevelde.info>"],
+        "keywords": ["smart meter", "belgium", "p1", "energy", "metering", "power", "consumption"],
+        "license": "MIT",
+        "platform": "Javascript/Node.js",
+        "main": "build/main.js",
+        "icon": "belgium-smart-meter-p1.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/stefaanv/ioBroker.belgium-smart-meter-p1/master/admin/belgium-smart-meter-p1.png",
+        "readme": "https://github.com/stefaanv/ioBroker.belgium-smart-meter-p1/blob/master/README.md",
+        "loglevel": "info",
+        "mode": "daemon",
+        "type": "energy",
+        "compact": true,
+        "connectionType": "local",
+        "dataSource": "push",
+        "adminUI": {
+            "config": "json"
+        },
+        "dependencies": [
+            {
+                "js-controller": ">=3.3.22"
+            }
+        ],
+        "globalDependencies": [
+            {
+                "admin": ">=5.1.13"
+            }
+        ]
+    },
+    "native": {
+        "option1": true,
+        "option2": "42"
+    },
+    "objects": [],
+    "instanceObjects": []
+}
