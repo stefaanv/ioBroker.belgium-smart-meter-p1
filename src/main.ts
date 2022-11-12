@@ -1,30 +1,24 @@
 /*
  * Created with @iobroker/create-adapter v2.3.0
+ * Info about BE smart meter on https://jensd.be/1183/linux/read-data-from-the-belgian-digital-meter-through-the-p1-port, including OBIS codes
  */
 
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 import * as utils from '@iobroker/adapter-core'
 import { ReadlineParser } from '@serialport/parser-readline'
+import { format as fnsFormat, parse as parseDate } from 'date-fns'
 import { SerialPort } from 'serialport'
-
-const OBIS_TRANSLATION: Record<string, { name: string; type: 'timestamp' | 'integer' | 'realWithUnit' }> = {
-    '0-0:1.0.0': { name: 'timestamp', type: 'timestamp' },
-    '1-0:1.8.1': { name: 'totaalVerbruikDag', type: 'realWithUnit' },
-    '1-0:1.8.2': { name: 'totaalVerbruikNacht', type: 'realWithUnit' },
-    '1-0:2.8.1': { name: 'totaalInjectieDag', type: 'realWithUnit' },
-    '1-0:2.8.2': { name: 'totaalInjectieNacht', type: 'realWithUnit' },
-    '0-0:96.14.0': { name: 'tarief', type: 'integer' }, //1=dag, 2=nacht
-    '1-0:1.7.0': { name: 'huidigVerbruik', type: 'realWithUnit' },
-    '1-0:2.7.0': { name: 'huidigeInjectie', type: 'realWithUnit' },
-    '1-0:32.7.0': { name: 'spanning', type: 'realWithUnit' },
-    '1-0:31.7.0': { name: 'stroom', type: 'realWithUnit' },
-}
+import { OBIS_TRANSLATION, TariffEnum, ValueAndUnit, ValueAndUnitAndTimestamp } from './lib/types-and-consts'
 
 // Load your modules here, e.g.:
 
 class BelgiumSmartMeterP1 extends utils.Adapter {
     private serialPort?: SerialPort
+    private aggregateIntervals = 1
+    private aggregateCounter = 0
+    private discoveryReported: string[] = []
+    private aggregation: Record<string, number> = {}
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({
@@ -46,8 +40,10 @@ class BelgiumSmartMeterP1 extends utils.Adapter {
 
         // The adapters config (in the instance object everything under the attribute "native") is accessible via
         // this.config:
-        const port = this.config.serialPort ?? '/dev/ttyUSB0'
+        const port = this.config.serialPort ?? 'com1'
         const baudRate = this.config.baudrate ?? 115200
+        this.aggregateIntervals = this.config.aggregateIntervals ?? 10
+        this.aggregateCounter = 0
         this.serialPort = new SerialPort({
             path: port,
             baudRate,
@@ -55,8 +51,8 @@ class BelgiumSmartMeterP1 extends utils.Adapter {
 
         this.log.info(`serial port: ${port} @ ${baudRate}`)
         const parser = this.serialPort.pipe(new ReadlineParser({ delimiter: '\r\n' }))
-        parser.on('data', (data: string) => console.log(data))
-
+        parser.on('data', (line: string) => this.processLineFromSerialPort(line))
+        //
         /*
 		For every state in the system there has to be also an object of type state
 		Here a simple template for a boolean variable named "testVariable"
@@ -109,11 +105,7 @@ class BelgiumSmartMeterP1 extends utils.Adapter {
     private onUnload(callback: () => void): void {
         try {
             // Here you must clear all timeouts or intervals that may still be active
-            // clearTimeout(timeout1);
-            // clearTimeout(timeout2);
-            // ...
-            // clearInterval(interval1);
-
+            this.serialPort?.close()
             callback()
         } catch (e) {
             callback()
@@ -164,6 +156,81 @@ class BelgiumSmartMeterP1 extends utils.Adapter {
     //         }
     //     }
     // }
+
+    //#region `functions added by Stefaan`
+    private processLineFromSerialPort(line: string): void {
+        if (line.startsWith('!')) {
+            this.aggregateCounter++
+            return
+        }
+        if (!line || line.startsWith('/FLU')) return // ingore lines atrting with `!` and `/FLU`
+
+        const code = line.split('(')[0]
+        const parameter = OBIS_TRANSLATION[code]
+        if (parameter.type == 'ignore' || !parameter.regex) return
+
+        if (!parameter) {
+            this.log.warn(`unknown OBIS code ${code} - OBIS_TRANSLATION list must be extended`)
+            return
+        }
+        const match = line.match(parameter.regex)
+        if (!match) {
+            this.log.error(`no regex match on "${line}" with ${parameter.regex}`)
+            return
+        }
+
+        const report = this.aggregateCounter === 0
+
+        switch (parameter.type) {
+            case 'realWithUnit':
+                const rwu = this.parseRealWithUnit(match)
+                if (report) this.log.debug(`${parameter.name} -> ${rwu.value} ${rwu.unit}`)
+                break
+            case 'tariff':
+                const tariff = this.parseTariff(match)
+                if (report) this.log.debug(`tariff -> ${TariffEnum[tariff]}`)
+                break
+            case 'timestamp':
+                const timestamp = this.parseTimestamp(match)
+                if (report) this.log.debug(`timestamp ${fnsFormat(timestamp, 'Ppp')}`)
+                break
+            case 'gas':
+                const gas = this.parseGas(match)
+                if (report) this.log.debug(`gas ${gas.value} ${gas.unit} @ ${fnsFormat(gas.timestamp, 'Ppp')}`)
+                break
+            default:
+                break
+        }
+
+        if (this.aggregateCounter === this.aggregateIntervals) {
+            this.aggregateCounter = 0
+            this.log.debug(`=-=-=-=-=-= packet end =-=-=-=-=-=`)
+        }
+    }
+
+    private parseRealWithUnit(match: RegExpMatchArray): ValueAndUnit {
+        const value = parseFloat(match[1])
+        const unit = match[2]
+        return { value, unit }
+    }
+
+    private parseTariff(match: RegExpMatchArray): TariffEnum {
+        return parseInt(match[1]) as TariffEnum
+    }
+
+    private parseTimestamp(match: RegExpMatchArray): Date {
+        const capture = ('20' + match[1]).substring(0, 14)
+        return parseDate(capture, 'yyyyMMddHHmmss', new Date())
+    }
+
+    private parseGas(match: RegExpMatchArray): ValueAndUnitAndTimestamp {
+        const capture = ('20' + match[1]).substring(0, 14)
+        const timestamp = parseDate(capture, 'yyyyMMddHHmmss', new Date())
+        const value = parseFloat(match[2])
+        const unit = match[3]
+        return { value, unit, timestamp }
+    }
+    //#endregion `functions added by Stefaan`
 }
 
 if (require.main !== module) {

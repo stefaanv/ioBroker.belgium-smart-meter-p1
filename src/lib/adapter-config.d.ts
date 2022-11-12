@@ -6,6 +6,7 @@ declare global {
         interface AdapterConfig {
             serialPort: string | undefined
             baudrate: number
+            aggregateIntervals: number
         }
     }
 }
