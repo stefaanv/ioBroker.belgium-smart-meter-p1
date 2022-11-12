@@ -9,7 +9,13 @@ import * as utils from '@iobroker/adapter-core'
 import { ReadlineParser } from '@serialport/parser-readline'
 import { format as fnsFormat, parse as parseDate } from 'date-fns'
 import { SerialPort } from 'serialport'
-import { OBIS_TRANSLATION, TariffEnum, ValueAndUnit, ValueAndUnitAndTimestamp } from './lib/types-and-consts'
+import {
+    OBIS_TRANSLATION,
+    ParameterNameAndType,
+    TariffEnum,
+    ValueAndUnit,
+    ValueAndUnitAndTimestamp,
+} from './lib/types-and-consts'
 
 // Load your modules here, e.g.:
 
@@ -158,7 +164,7 @@ class BelgiumSmartMeterP1 extends utils.Adapter {
     // }
 
     //#region `functions added by Stefaan`
-    private processLineFromSerialPort(line: string): void {
+    private async processLineFromSerialPort(line: string): Promise<void> {
         if (line.startsWith('!')) {
             this.aggregateCounter++
             return
@@ -167,12 +173,12 @@ class BelgiumSmartMeterP1 extends utils.Adapter {
 
         const code = line.split('(')[0]
         const parameter = OBIS_TRANSLATION[code]
-        if (parameter.type == 'ignore' || !parameter.regex) return
-
         if (!parameter) {
             this.log.warn(`unknown OBIS code ${code} - OBIS_TRANSLATION list must be extended`)
             return
         }
+        if (!parameter.name || parameter.type == 'ignore' || !parameter.regex) return
+
         const match = line.match(parameter.regex)
         if (!match) {
             this.log.error(`no regex match on "${line}" with ${parameter.regex}`)
@@ -180,10 +186,11 @@ class BelgiumSmartMeterP1 extends utils.Adapter {
         }
 
         const report = this.aggregateCounter === 0
-
+        let unit = ''
         switch (parameter.type) {
             case 'realWithUnit':
                 const rwu = this.parseRealWithUnit(match)
+                unit = rwu.unit
                 if (report) this.log.debug(`${parameter.name} -> ${rwu.value} ${rwu.unit}`)
                 break
             case 'tariff':
@@ -196,16 +203,46 @@ class BelgiumSmartMeterP1 extends utils.Adapter {
                 break
             case 'gas':
                 const gas = this.parseGas(match)
+                unit = gas.unit
                 if (report) this.log.debug(`gas ${gas.value} ${gas.unit} @ ${fnsFormat(gas.timestamp, 'Ppp')}`)
                 break
             default:
                 break
         }
 
+        if (parameter.stateRole && !this.discoveryReported.includes(parameter.name)) {
+            await this.reportDiscoveredState(parameter, unit)
+        }
+
         if (this.aggregateCounter === this.aggregateIntervals) {
             this.aggregateCounter = 0
             this.log.debug(`=-=-=-=-=-= packet end =-=-=-=-=-=`)
         }
+    }
+
+    private async reportDiscoveredState(parameter: ParameterNameAndType, unit: string): Promise<void> {
+        const role = parameter.stateRole?.split('.')[0]
+        const name = parameter.name! as string
+        this.log.info(`reporting ${name} as ${role}`)
+        switch (role) {
+            case 'value':
+                await this.setObjectNotExistsAsync(name, {
+                    type: 'state',
+                    common: {
+                        name,
+                        type: 'number',
+                        role: parameter.stateRole!,
+                        unit,
+                        read: true,
+                        write: false,
+                    },
+                    native: {},
+                })
+                break
+            default:
+                break
+        }
+        this.discoveryReported.push(name)
     }
 
     private parseRealWithUnit(match: RegExpMatchArray): ValueAndUnit {

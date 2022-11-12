@@ -10,7 +10,7 @@ export type StateRole =
     | 'value.power.consumption'
     | 'value.time'
     | 'info.name'
-    | 'state'
+    | 'common.state'
 export type ParameterNameAndType = {
     name?: string
     type: 'string' | 'timestamp' | 'tariff' | 'realWithUnit' | 'gas' | 'ignore'
@@ -62,20 +62,20 @@ export const OBIS_TRANSLATION: Record<string, ParameterNameAndType> = {
         regex: REAL_WITH_UNIT_REGEX,
         stateRole: 'value.power.consumption',
     },
-    '0-0:96.14.0': { name: 'tariff', type: 'tariff', cumul: 'last', regex: INTEGER_REGEX, stateRole: 'state' },
+    '0-0:96.14.0': { name: 'tariff', type: 'tariff', cumul: 'last', regex: INTEGER_REGEX, stateRole: 'common.state' },
     '1-0:1.7.0': {
         name: 'instantaneous-consumption-all-phases',
         type: 'realWithUnit',
         cumul: 'average',
         regex: REAL_WITH_UNIT_REGEX,
-        stateRole: 'state',
+        stateRole: 'common.state',
     },
     '1-0:2.7.0': {
         name: 'instantaneous-injection-all-phases',
         type: 'realWithUnit',
         cumul: 'average',
         regex: REAL_WITH_UNIT_REGEX,
-        stateRole: 'state',
+        stateRole: 'common.state',
     },
     '1-0:21.7.0': { type: 'ignore' },
     '1-0:41.7.0': { type: 'ignore' },
@@ -132,5 +132,5 @@ export const OBIS_TRANSLATION: Record<string, ParameterNameAndType> = {
     '0-1:24.1.0': { type: 'ignore' },
     '0-1:96.1.1': { type: 'ignore' },
     '0-1:24.4.0': { type: 'ignore' },
-    '0-1:24.2.3': { name: 'gas-total-consumption', type: 'gas', regex: GAS_REGEX, stateRole: 'state' }, //(221110152507W)(01515.254*m3)
+    '0-1:24.2.3': { name: 'gas-total-consumption', type: 'gas', regex: GAS_REGEX, stateRole: 'common.state' }, //(221110152507W)(01515.254*m3)
 }

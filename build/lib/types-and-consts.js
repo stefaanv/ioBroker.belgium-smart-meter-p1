@@ -70,20 +70,20 @@ const OBIS_TRANSLATION = {
     regex: REAL_WITH_UNIT_REGEX,
     stateRole: "value.power.consumption"
   },
-  "0-0:96.14.0": { name: "tariff", type: "tariff", cumul: "last", regex: INTEGER_REGEX, stateRole: "state" },
+  "0-0:96.14.0": { name: "tariff", type: "tariff", cumul: "last", regex: INTEGER_REGEX, stateRole: "common.state" },
   "1-0:1.7.0": {
     name: "instantaneous-consumption-all-phases",
     type: "realWithUnit",
     cumul: "average",
     regex: REAL_WITH_UNIT_REGEX,
-    stateRole: "state"
+    stateRole: "common.state"
   },
   "1-0:2.7.0": {
     name: "instantaneous-injection-all-phases",
     type: "realWithUnit",
     cumul: "average",
     regex: REAL_WITH_UNIT_REGEX,
-    stateRole: "state"
+    stateRole: "common.state"
   },
   "1-0:21.7.0": { type: "ignore" },
   "1-0:41.7.0": { type: "ignore" },
@@ -140,7 +140,7 @@ const OBIS_TRANSLATION = {
   "0-1:24.1.0": { type: "ignore" },
   "0-1:96.1.1": { type: "ignore" },
   "0-1:24.4.0": { type: "ignore" },
-  "0-1:24.2.3": { name: "gas-total-consumption", type: "gas", regex: GAS_REGEX, stateRole: "state" }
+  "0-1:24.2.3": { name: "gas-total-consumption", type: "gas", regex: GAS_REGEX, stateRole: "common.state" }
 };
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
